@@ -270,7 +270,7 @@
                 return IGNORE_MESSAGES.some(ignoreMsg => message.includes(ignoreMsg));
             }
             
-            function addMessage(sender, text, className) {
+            function addMessage(sender, content, className, isPdf = false) {
                 const messageElement = document.createElement('div');
                 messageElement.className = `message ${className}`;
                 
@@ -278,13 +278,20 @@
                 senderElement.className = 'message-sender';
                 senderElement.textContent = sender;
                 
-                const textElement = document.createElement('div');
-                textElement.innerHTML = text;
+                const contentElement = document.createElement('div');
+                if (isPdf) {
+                    const pdfLink = document.createElement('a');
+                    pdfLink.href = content;
+                    pdfLink.textContent = '📄 Download PDF';
+                    pdfLink.target = '_blank';
+                    contentElement.appendChild(pdfLink);
+                } else {
+                    contentElement.innerHTML = formatMessage(content);
+                }
                 
                 messageElement.appendChild(senderElement);
-                messageElement.appendChild(textElement);
+                messageElement.appendChild(contentElement);
                 chatMessages.appendChild(messageElement);
-                
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         });
