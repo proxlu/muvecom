@@ -56,6 +56,12 @@
             text-align: left;
         }
         
+        .error-message {
+            color: #d32f2f;
+            text-align: left;
+            font-style: italic;
+        }
+        
         .message-sender {
             font-weight: bold;
             margin-bottom: 4px;
@@ -97,6 +103,25 @@
         
         #send-button:hover {
             background-color: #1765cc;
+        }
+        
+        #send-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
         b {
@@ -144,50 +169,71 @@
             // Periodically check for spam messages from AI
             setInterval(checkForSpam, 30000); // Check every 30 seconds
             
-            function sendMessage() {
+            async function sendMessage() {
                 const message = messageInput.value.trim();
-                if (message) {
+                if (message && !sendButton.disabled) {
                     // Add user message to chat
                     addMessage('Você', message, 'user-message');
                     messageInput.value = '';
                     messageInput.style.height = 'auto';
                     
-                    // Send to webhook
-                    fetch('https://api.muvecom.com.br/v1/resp', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ chatInput: message })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
+                    // Disable send button during request
+                    sendButton.disabled = true;
+                    sendButton.innerHTML = '<div class="loading"></div>';
+                    
+                    try {
+                        // Send to webhook
+                        const response = await fetch('https://api.muvecom.com.br/v1/resp', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ chatInput: message })
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Erro HTTP: ${response.status}`);
+                        }
+                        
+                        const data = await response.json();
+                        
                         if (data.chatOutput) {
                             // Format bold text
                             const formattedMessage = data.chatOutput.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
                             addMessage('IA', formattedMessage, 'ai-message');
+                        } else {
+                            addMessage('Sistema', 'A IA respondeu, mas sem conteúdo válido.', 'error-message');
                         }
-                    })
-                    .catch(error => {
+                    } catch (error) {
                         console.error('Error:', error);
-                        addMessage('IA', 'Desculpe, ocorreu um erro ao processar sua mensagem.', 'ai-message');
-                    });
+                        addMessage('Sistema', 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente mais tarde.', 'error-message');
+                    } finally {
+                        // Re-enable send button
+                        sendButton.disabled = false;
+                        sendButton.textContent = 'Enviar';
+                    }
                 }
             }
             
-            function checkForSpam() {
-                fetch('https://api.muvecom.com.br/v1/spam')
-                .then(response => response.json())
-                .then(data => {
+            async function checkForSpam() {
+                try {
+                    const response = await fetch('https://api.muvecom.com.br/v1/spam');
+                    
+                    if (!response.ok) {
+                        throw new Error(`Erro HTTP: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
                     if (data.chatOutput) {
                         // Format bold text
                         const formattedMessage = data.chatOutput.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
                         addMessage('IA', formattedMessage, 'ai-message');
                     }
-                })
-                .catch(error => {
+                } catch (error) {
                     console.error('Error checking for spam:', error);
-                });
+                    // Não exibimos erro para o usuário nas mensagens automáticas
+                }
             }
             
             function addMessage(sender, text, className) {
