@@ -236,28 +236,46 @@
             }
             
             async function parseResponse(response) {
-                const contentType = response.headers.get('content-type');
-                
-                // Verifica se é PDF
-                if (contentType === 'application/pdf') {
-                    const blob = await response.blob();
-                    return {
-                        content: URL.createObjectURL(blob),
-                        isPdf: true  // Nova flag para identificar PDF
-                    };
-                }
-                // Restante do código para JSON/texto (mantenha como está)
-                const text = await response.text();
                 try {
-                    const data = JSON.parse(text);
+                    const contentType = response.headers.get('content-type') || '';
+                    
+                    // Verifica se é PDF
+                    if (contentType.includes('application/pdf')) {
+                        if (!response.ok) {
+                            throw new Error('Erro ao carregar PDF');
+                        }
+                        
+                        const blob = await response.blob();
+                        if (blob.size === 0) {
+                            throw new Error('PDF vazio ou inválido');
+                        }
+                        
+                        return {
+                            content: URL.createObjectURL(blob),
+                            isPdf: true,
+                            fileName: response.headers.get('content-disposition')?.split('filename=')[1] || 'catalogo.pdf'
+                        };
+                    }
+                    
+                    // Tratamento para JSON/texto
+                    const text = await response.text();
+                    try {
+                        const data = JSON.parse(text);
+                        return {
+                            content: data.chatOutput || data.message || text,
+                            isJson: true
+                        };
+                    } catch {
+                        return {
+                            content: text,
+                            isJson: false
+                        };
+                    }
+                } catch (error) {
+                    console.error('Erro no parseResponse:', error);
                     return {
-                        content: data.chatOutput || data.message || text,
-                        isJson: true
-                    };
-                } catch {
-                    return {
-                        content: text,
-                        isJson: false
+                        content: `Erro: ${error.message}`,
+                        isError: true
                     };
                 }
             }
@@ -270,7 +288,7 @@
                 return IGNORE_MESSAGES.some(ignoreMsg => message.includes(ignoreMsg));
             }
             
-            function addMessage(sender, content, className, isPdf = false) {
+            function addMessage(sender, content, className, isPdf = false, fileName = 'catalogo.pdf') {
                 const messageElement = document.createElement('div');
                 messageElement.className = `message ${className}`;
                 
@@ -280,11 +298,22 @@
                 
                 const contentElement = document.createElement('div');
                 if (isPdf) {
+                    const pdfContainer = document.createElement('div');
+                    pdfContainer.style.marginTop = '10px';
+                    
                     const pdfLink = document.createElement('a');
                     pdfLink.href = content;
-                    pdfLink.textContent = '📄 Download PDF';
+                    pdfLink.textContent = `📄 ${fileName}`;
                     pdfLink.target = '_blank';
-                    contentElement.appendChild(pdfLink);
+                    pdfLink.style.display = 'inline-block';
+                    pdfLink.style.padding = '8px 12px';
+                    pdfLink.style.backgroundColor = '#f0f0f0';
+                    pdfLink.style.borderRadius = '4px';
+                    pdfLink.style.textDecoration = 'none';
+                    pdfLink.style.color = '#1a73e8';
+                    
+                    pdfContainer.appendChild(pdfLink);
+                    contentElement.appendChild(pdfContainer);
                 } else {
                     contentElement.innerHTML = formatMessage(content);
                 }
