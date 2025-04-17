@@ -197,20 +197,15 @@
                         });
                         
                         const responseData = await parseResponse(response);
-
-                        // Dentro do try, após obter responseData:
-                        if (responseData.isPdf) {
-                            addMessage('IA', responseData.content, 'ai-message', true, responseData.fileName);
-                        } else if (responseData.content && !shouldIgnoreMessage(responseData.content)) {
-                            const formattedMessage = formatMessage(responseData.content);
-                            addMessage('IA', formattedMessage, 'ai-message');
-                        }
-                        
+                    
                         if (!response.ok) {
                             throw new Error(responseData.content || 'Erro ao processar mensagem');
                         }
-                        
-                        if (responseData.content && !shouldIgnoreMessage(responseData.content)) {
+                    
+                        // Verificação única de resposta
+                        if (responseData.isPdf) {
+                            addMessage('IA', responseData.content, 'ai-message', true, responseData.fileName);
+                        } else if (responseData.content && !shouldIgnoreMessage(responseData.content)) {
                             const formattedMessage = formatMessage(responseData.content);
                             addMessage('IA', formattedMessage, 'ai-message');
                         }
