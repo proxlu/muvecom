@@ -236,23 +236,24 @@
             }
             
             async function parseResponse(response) {
-                const text = await response.text();
+                const contentType = response.headers.get('content-type');
                 
+                // Verifica se é PDF
+                if (contentType === 'application/pdf') {
+                    const blob = await response.blob();
+                    return {
+                        content: URL.createObjectURL(blob),
+                        isPdf: true  // Nova flag para identificar PDF
+                    };
+                }
+                // Restante do código para JSON/texto (mantenha como está)
+                const text = await response.text();
                 try {
                     const data = JSON.parse(text);
-                    
-                    if (Array.isArray(data)) {
-                        return {
-                            content: data[0]?.chatOutput || data[0]?.message || text,
-                            isJson: true
-                        };
-                    }
-                    
                     return {
                         content: data.chatOutput || data.message || text,
                         isJson: true
                     };
-                    
                 } catch {
                     return {
                         content: text,
