@@ -197,6 +197,15 @@
                         });
                         
                         const responseData = await parseResponse(response);
+                        // Após receber a resposta do /resp:
+                        if (responseData.text.includes('PDF')) { // Adapte conforme seu marcador
+                          fetch('https://api.muvecom.com.br/v1/spam?sessionId=' + sessionId)
+                            .then(response => response.blob())
+                            .then(blob => {
+                              const url = URL.createObjectURL(blob);
+                              addMessage('IA', `<a href="${url}" download>📄 Baixar Catálogo</a>`, 'ai-message');
+                            });
+                        }
                     
                         if (!response.ok) {
                             throw new Error(responseData.content || 'Erro ao processar mensagem');
