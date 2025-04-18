@@ -40,10 +40,10 @@
         }
         
         .message {
-            margin-bottom: 5px;
+            margin-bottom: 15px;
             word-wrap: break-word;
             white-space: pre-wrap;
-            line-height: 1.0;
+            line-height: 1.4;
         }
         
         .user-message {
@@ -308,12 +308,12 @@
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message || sendButton.disabled) return;
-    
+        
             addMessage('Você', message, 'user-message');
             messageInput.value = '';
             sendButton.disabled = true;
             sendButton.innerHTML = '<div class="loading"></div>';
-    
+        
             try {
                 // 1. Envia mensagem para o endpoint /resp
                 const response = await fetch('https://api.muvecom.com.br/v1/resp', {
@@ -327,18 +327,22 @@
                         chatInput: message
                     })
                 });
-    
+        
                 const responseText = await response.text();
-    
+        
                 if (!response.ok) {
                     throw new Error(responseText || 'Erro no servidor');
                 }
-    
+        
                 // 2. Processa resposta da IA
                 addMessage('IA', responseText, 'ai-message');
-    
+        
+                // Libera o botão imediatamente após a resposta da IA
+                sendButton.disabled = false;
+                sendButton.textContent = 'Enviar';
+        
                 // 3. Se tiver marcador, faz GET para /spam com verificações
-                if (!pdfRequested) {
+                if (responseText.includes('5BHor92uAR') && !pdfRequested) {
                     pdfRequested = true;
                     try {
                         const pdfUrl = await safelyDownloadPdf();
@@ -349,24 +353,25 @@
                                 <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo</a>
                             </div>`, 
                             'ai-message', true);
-                            
+                        
                     } catch (error) {
                         let errorMessage = 'Erro ao receber catálogo';
                         if (error.message === 'Sessão inválida') {
                             errorMessage = 'Não autorizado - sessão inválida';
                         }
                         addMessage('Sistema', errorMessage, 'error-message');
-                        pdfRequested = false;
+                    } finally {
+                        pdfRequested = false; // Resetar a flag após tentativa de download
                     }
                 }
-    
+        
             } catch (error) {
                 addMessage('Sistema', `Erro: ${error.message}`, 'error-message');
-            } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = 'Enviar';
             }
         }
+        
         // Event Listeners
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
