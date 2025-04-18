@@ -127,6 +127,29 @@
         b {
             font-weight: bold;
         }
+                /* Adicionar estilos para mídia */
+        .media-container {
+            margin-top: 10px;
+            max-width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .media-container img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+        }
+        .media-container video {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+        }
+        .media-link {
+            display: inline-block;
+            margin-top: 5px;
+            color: #1a73e8;
+            word-break: break-all;
+        }
     </style>
 </head>
 <body>
@@ -151,13 +174,67 @@
             return message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         }
 
+        // Função para detectar e formatar mídia
+        function detectAndFormatMedia(content) {
+            // Expressões regulares para detectar URLs de imagens e vídeos
+            const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|bmp)(?:\?\S*)?)/gi;
+            const videoRegex = /(https?:\/\/.*\.(?:mp4|webm|ogg)(?:\?\S*)?)/gi;
+            const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=)?([a-zA-Z0-9_-]{11})/gi;
+            const driveRegex = /(https?:\/\/)?(www\.)?(drive\.google\.com)\/(file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/gi;
+
+            // Processa imagens
+            content = content.replace(imageRegex, (match) => {
+                return `<div class="media-container">
+                    <img src="${match}" alt="Imagem" onerror="this.style.display='none'">
+                    <a href="${match}" target="_blank" class="media-link">Abrir imagem</a>
+                </div>`;
+            });
+
+            // Processa vídeos
+            content = content.replace(videoRegex, (match) => {
+                return `<div class="media-container">
+                    <video controls>
+                        <source src="${match}" type="video/mp4">
+                        Seu navegador não suporta vídeos HTML5.
+                    </video>
+                    <a href="${match}" target="_blank" class="media-link">Abrir vídeo</a>
+                </div>`;
+            });
+
+            // Processa YouTube
+            content = content.replace(youtubeRegex, (match, p1, p2, p3, p4, videoId) => {
+                return `<div class="media-container">
+                    <iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" 
+                        frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen></iframe>
+                    <a href="${match}" target="_blank" class="media-link">Abrir no YouTube</a>
+                </div>`;
+            });
+
+            // Processa Google Drive (visualização)
+            content = content.replace(driveRegex, (match, p1, p2, p3, p4, fileId) => {
+                return `<div class="media-container">
+                    <iframe src="https://drive.google.com/file/d/${fileId}/preview" 
+                        width="100%" height="300" frameborder="0"></iframe>
+                    <a href="${match}" target="_blank" class="media-link">Abrir no Google Drive</a>
+                </div>`;
+            });
+
+            return content;
+        }
+
+        // Modificar a função addMessage para suportar mídia
         function addMessage(sender, content, className, isPdf = false) {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${className}`;
             
+            // Processa o conteúdo para detectar mídia
+            let processedContent = isPdf ? content : formatMessage(content);
+            processedContent = detectAndFormatMedia(processedContent);
+            
             messageElement.innerHTML = `
                 <div class="message-sender">${sender}</div>
-                <div>${isPdf ? content : formatMessage(content)}</div>
+                <div>${processedContent}</div>
             `;
             
             chatMessages.appendChild(messageElement);
