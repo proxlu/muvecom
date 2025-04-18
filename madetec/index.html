@@ -175,58 +175,62 @@
             setInterval(checkForSpam, 30000);
             
             async function sendMessage() {
-                const message = messageInput.value.trim();
-                if (message && !sendButton.disabled) {
-                    addMessage('Você', message, 'user-message');
-                    messageInput.value = '';
-                    messageInput.style.height = 'auto';
-                    
-                    sendButton.disabled = true;
-                    sendButton.innerHTML = '<div class="loading"></div>';
-                    
-                    try {
-                        const response = await fetch('https://api.muvecom.com.br/v1/resp', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                sessionId: sessionId,
-                                chatInput: message
-                            })
-                        });
-                        
-                        const responseData = await parseResponse(response);
-                        // Após receber a resposta do /resp:
-                        if (responseData.output.includes('5BHor92uAR')) { // Adapte conforme seu marcador
-                          fetch('https://api.muvecom.com.br/v1/spam?sessionId=' + sessionId)
-                            .then(response => response.blob())
-                            .then(blob => {
-                              const url = URL.createObjectURL(blob);
-                              addMessage('IA', `<a href="${url}" download>📄 Baixar Catálogo</a>`, 'ai-message');
-                            });
-                        }
-                    
-                        if (!response.ok) {
-                            throw new Error(responseData.output || 'Erro ao processar mensagem');
-                        }
-                    
-                        // Verificação única de resposta
-                        if (responseData.isPdf) {
-                            addMessage('IA', responseData.output, 'ai-message', true, responseData.fileName);
-                        } else if (responseData.output && !shouldIgnoreMessage(responseData.output)) {
-                            const formattedMessage = formatMessage(responseData.output);
-                            addMessage('IA', formattedMessage, 'ai-message');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        addMessage('Sistema', `Erro: ${error.message}`, 'error-message');
-                    } finally {
-                        sendButton.disabled = false;
-                        sendButton.textContent = 'Enviar';
-                    }
-                }
+    const message = messageInput.value.trim();
+    if (message && !sendButton.disabled) {
+        addMessage('Você', message, 'user-message');
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        
+        sendButton.disabled = true;
+        sendButton.innerHTML = '<div class="loading"></div>';
+        
+        try {
+            const response = await fetch('https://api.muvecom.com.br/v1/resp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    chatInput: message
+                })
+            });
+            
+            const responseData = await parseResponse(response);
+            
+            if (!response.ok) {
+                throw new Error(responseData.output || 'Erro ao processar mensagem');
             }
+            
+            // Verifica se precisa enviar PDF
+            if (responseData.output && responseData.output.includes('5BHor92uAR')) {
+                fetch('https://api.muvecom.com.br/v1/spam?sessionId=' + sessionId)
+                    .then(pdfResponse => pdfResponse.blob())
+                    .then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        addMessage('IA', `<a href="${url}" download="catalogo.pdf">📄 Baixar Catálogo</a>`, 'ai-message');
+                    })
+                    .catch(error => {
+                        console.error('Erro ao baixar PDF:', error);
+                        addMessage('Sistema', 'Erro ao baixar o catálogo', 'error-message');
+                    });
+            }
+            
+            // Exibe a mensagem principal (removendo o marcador de PDF)
+            if (responseData.output && !responseData.isPdf && !shouldIgnoreMessage(responseData.output)) {
+                const displayText = responseData.output.replace(/5BHor92uAR/g, '');
+                const formattedMessage = formatMessage(displayText);
+                addMessage('IA', formattedMessage, 'ai-message');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage('Sistema', `Erro: ${error.message}`, 'error-message');
+        } finally {
+            sendButton.disabled = false;
+            sendButton.textContent = 'Enviar';
+        }
+    }
+}
             
             async function checkForSpam() {
                 try {
@@ -247,50 +251,50 @@
                 }
             }
             
-            async function parseResponse(response) {
-                try {
-                    const contentType = response.headers.get('content-type') || '';
-                    
-                    // Verifica se é PDF
-                    if (contentType.includes('application/pdf') || responseData.output.includes('5BHor92uAR')) {
-                        if (!response.ok) {
-                            throw new Error('Erro ao carregar PDF');
-                        }
-                        
-                        const blob = await response.blob();
-                        if (blob.size === 0) {
-                            throw new Error('PDF vazio ou inválido');
-                        }
-                        
-                        return {
-                            content: URL.createObjectURL(blob),
-                            isPdf: true,
-                            fileName: response.headers.get('content-disposition')?.split('filename=')[1] || 'catalogo.pdf'
-                        };
-                    }
-                    
-                    // Tratamento para JSON/texto
-                    const text = await response.text();
-                    try {
-                        const data = JSON.parse(text);
-                        return {
-                            content: data.chatOutput || data.message || text,
-                            isJson: true
-                        };
-                    } catch {
-                        return {
-                            content: text,
-                            isJson: false
-                        };
-                    }
-                } catch (error) {
-                    console.error('Erro no parseResponse:', error);
-                    return {
-                        content: `Erro: ${error.message}`,
-                        isError: true
-                    };
-                }
+async function parseResponse(response) {
+    try {
+        const contentType = response.headers.get('content-type') || '';
+        const text = await response.text();
+
+        // Verifica se é PDF
+        if (contentType.includes('application/pdf')) {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar PDF');
             }
+            
+            const blob = await response.blob();
+            if (blob.size === 0) {
+                throw new Error('PDF vazio ou inválido');
+            }
+            
+            return {
+                output: URL.createObjectURL(blob),
+                isPdf: true,
+                fileName: response.headers.get('content-disposition')?.split('filename=')[1] || 'catalogo.pdf'
+            };
+        }
+        
+        // Tratamento para JSON/texto
+        try {
+            const data = JSON.parse(text);
+            return {
+                output: data.output || data.chatOutput || data.message || text,
+                isJson: true
+            };
+        } catch {
+            return {
+                output: text,
+                isJson: false
+            };
+        }
+    } catch (error) {
+        console.error('Erro no parseResponse:', error);
+        return {
+            output: `Erro: ${error.message}`,
+            isError: true
+        };
+    }
+}
             
             function formatMessage(message) {
                 return message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
