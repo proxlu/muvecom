@@ -173,7 +173,7 @@
         const chatMessages = document.getElementById('chat-messages');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        let pdfRequested = false;
+        let isCheckingPdf = false;
         const GET_REQUEST_INTERVAL = 1000; // 1 segundo entre requisições
 
         // Funções auxiliares
@@ -277,9 +277,7 @@
                 const response = await fetch(`https://api.muvecom.com.br/v1/spam`, {
                     method: 'GET',
                     headers: {
-                        'X-Session-ID': sessionId,
-                        'Accept': 'application/json', // Alterado para json primeiro
-                        'Content-Type': 'application/json'
+                        'X-Session-ID': sessionId
                     }
                 });
     
@@ -291,9 +289,9 @@
                 }
     
                 // Verifica o tipo de conteúdo
-                const contentType = response.headers.get('content-type');
+                const xSessionId = response.headers.get('X-Session-ID');
                 
-                if (contentType && contentType.includes('application/pdf')) {
+                if (xSessionId.includes(sessionId)) {
                     const blob = await response.blob();
                     const pdfUrl = URL.createObjectURL(blob);
                     
