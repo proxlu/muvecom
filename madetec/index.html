@@ -204,7 +204,7 @@
             });
         
             // Depois processamos os URLs soltos
-            const mediaRegex = /(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|bmp|mp4|webm|ogg)(?:\?\S*)?)|(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11}))|(https?:\/\/(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-9_-]+))/gi;
+            const mediaRegex = /(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|bmp|mp4|webm|ogg)(?:\?\S*)?)|(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11}))|(https?:\/\/(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?export=download&id=)([a-zA-Z0-9_-]+))/gi;
             
             content = content.replace(mediaRegex, (match) => {
                 // Processa imagens
@@ -232,13 +232,21 @@
                     </div>`;
                 }
                 
-                // Processa Google Drive
+                // Processa Google Drive (todos os formatos)
                 if (match.includes('drive.google.com')) {
-                    const fileId = match.match(/\/file\/d\/([^\/]+)/)?.[1] || match.match(/id=([^&]+)/)?.[1];
-                    return `<div class="media-container">
-                        <iframe src="https://drive.google.com/file/d/${fileId}/preview" 
-                            width="100%" height="300" frameborder="0"></iframe>
-                    </div>`;
+                    const fileId = match.match(/\/file\/d\/([^\/]+)/)?.[1] || 
+                                   match.match(/id=([^&]+)/)?.[1] || 
+                                   match.match(/uc\?export=download&id=([^&]+)/)?.[1];
+                    
+                    if (fileId) {
+                        return `<div class="media-container">
+                            <iframe src="https://drive.google.com/file/d/${fileId}/preview" 
+                                width="100%" height="400" frameborder="0"></iframe>
+                            <p style="text-align: center; margin-top: 5px;">
+                                <a href="https://drive.google.com/uc?export=download&id=${fileId}" target="_blank">Download</a>
+                            </p>
+                        </div>`;
+                    }
                 }
                 
                 return match;
