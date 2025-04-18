@@ -252,13 +252,13 @@
             const messageElement = document.createElement('div');
             messageElement.className = `message ${className}`;
             
-            // Processa o conteúdo para detectar mídia
             let processedContent = isPdf ? content : formatMessage(content);
             processedContent = detectAndFormatMedia(processedContent);
             
+            // Remover espaços extras e quebras de linha desnecessárias
             messageElement.innerHTML = `
                 <div class="message-sender">${sender}</div>
-                <div>${processedContent}</div>
+                <div>${processedContent.trim()}</div>
             `;
             
             chatMessages.appendChild(messageElement);
@@ -335,11 +335,10 @@
                 }
     
                 // 2. Processa resposta da IA
-                const displayText = responseText.replace(/5BHor92uAR/g, '');
-                addMessage('IA', displayText, 'ai-message');
+                addMessage('IA', responseText, 'ai-message');
     
                 // 3. Se tiver marcador, faz GET para /spam com verificações
-                if (responseText.includes('5BHor92uAR') && !pdfRequested) {
+                if (!pdfRequested) {
                     pdfRequested = true;
                     try {
                         const pdfUrl = await safelyDownloadPdf();
