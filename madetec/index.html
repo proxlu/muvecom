@@ -252,7 +252,7 @@
                     const contentType = response.headers.get('content-type') || '';
                     
                     // Verifica se é PDF
-                    if (contentType.includes('application/pdf') || responseData.text.includes('5BHor92uAR')) {
+                    if (contentType.includes('application/pdf') || responseData.output.includes('5BHor92uAR')) {
                         if (!response.ok) {
                             throw new Error('Erro ao carregar PDF');
                         }
