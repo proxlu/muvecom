@@ -266,7 +266,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     
-        // Função independente para verificar e baixar o PDF
+        // Função independente para verificar e baixar o PDF (versão corrigida)
         async function checkForPdf() {
             if (isCheckingPdf) return;
             
@@ -277,35 +277,34 @@
             lastPdfCheckTime = now;
             
             try {
+                console.log('Verificando PDF...'); // Log para debug
+                
                 const pdfResponse = await fetch(`https://api.muvecom.com.br/v1/spam`, {
+                    method: 'GET',
                     headers: {
                         'X-Session-ID': sessionId,
-                        'Accept': 'application/pdf'
-                    }
+                        'Accept': 'application/pdf',
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include' // Para enviar cookies se necessário
                 });
+    
+                console.log('Resposta do PDF:', pdfResponse); // Log para debug
         
-                // Verifica se o sessionId do header corresponde
-                const responseSessionId = pdfResponse.headers.get('X-Session-ID');
-                if (responseSessionId !== sessionId) {
-                    throw new Error('Sessão inválida');
-                }
-        
-                if (!pdfResponse.ok) {
-                    throw new Error('Falha ao receber PDF');
-                }
-        
-                const blob = await pdfResponse.blob();
-                const pdfUrl = URL.createObjectURL(blob);
-                
-                addMessage('IA', 
-                    `<div class="media-container">
-                        <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo</a>
-                    </div>`, 
-                    'ai-message', true);
+                // Verifica se a resposta é um PDF válido
+                const contentType = pdfResponse.headers.get('content-type');
+                if (contentType && contentType.includes('application/pdf')) {
+                    const blob = await pdfResponse.blob();
+                    const pdfUrl = URL.createObjectURL(blob);
                     
+                    addMessage('IA', 
+                        `<div class="media-container">
+                            <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo</a>
+                        </div>`, 
+                        'ai-message', true);
+                }
             } catch (error) {
                 console.error('Erro na verificação do PDF:', error);
-                // Não mostra mensagem de erro para o usuário para não poluir o chat
             } finally {
                 isCheckingPdf = false;
                 // Agenda a próxima verificação
@@ -348,26 +347,12 @@
             }
         }
         
-        // Inicia o loop de verificação do PDF quando a página carrega
-        document.addEventListener('DOMContentLoaded', () => {
-            // Inicia a verificação periódica do PDF
-            checkForPdf();
-            
-            // Event Listeners (mantidos como antes)
-            messageInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-            sendButton.addEventListener('click', sendMessage);
-            messageInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            });
-        });
+    // Inicialização (versão corrigida sem duplicação)
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicia a verificação periódica do PDF
+        checkForPdf();
         
-        // Event Listeners
+        // Configura os event listeners
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -377,11 +362,11 @@
 
         sendButton.addEventListener('click', sendMessage);
 
-        // Auto-resize do textarea
         messageInput.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = this.scrollHeight + 'px';
         });
+    });
     </script>
 </body>
 </html>
