@@ -347,26 +347,26 @@
             }
         }
         
-    // Inicialização (versão corrigida sem duplicação)
-    document.addEventListener('DOMContentLoaded', () => {
-        // Inicia a verificação periódica do PDF
-        checkForPdf();
-        
-        // Configura os event listeners
-        messageInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
+        // Inicialização (versão corrigida sem duplicação)
+        document.addEventListener('DOMContentLoaded', () => {
+            // Inicia a verificação periódica do PDF
+            checkForPdf();
+            
+            // Configura os event listeners
+            messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+    
+            sendButton.addEventListener('click', sendMessage);
+    
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
         });
-
-        sendButton.addEventListener('click', sendMessage);
-
-        messageInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
-        });
-    });
     </script>
 </body>
 </html>
