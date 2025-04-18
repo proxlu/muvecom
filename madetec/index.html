@@ -198,7 +198,7 @@
                         
                         const responseData = await parseResponse(response);
                         // Após receber a resposta do /resp:
-                        if (responseData.text.includes('PDF')) { // Adapte conforme seu marcador
+                        if (responseData.output.includes('5BHor92uAR')) { // Adapte conforme seu marcador
                           fetch('https://api.muvecom.com.br/v1/spam?sessionId=' + sessionId)
                             .then(response => response.blob())
                             .then(blob => {
@@ -208,14 +208,14 @@
                         }
                     
                         if (!response.ok) {
-                            throw new Error(responseData.content || 'Erro ao processar mensagem');
+                            throw new Error(responseData.output || 'Erro ao processar mensagem');
                         }
                     
                         // Verificação única de resposta
                         if (responseData.isPdf) {
-                            addMessage('IA', responseData.content, 'ai-message', true, responseData.fileName);
-                        } else if (responseData.content && !shouldIgnoreMessage(responseData.content)) {
-                            const formattedMessage = formatMessage(responseData.content);
+                            addMessage('IA', responseData.output, 'ai-message', true, responseData.fileName);
+                        } else if (responseData.output && !shouldIgnoreMessage(responseData.output)) {
+                            const formattedMessage = formatMessage(responseData.output);
                             addMessage('IA', formattedMessage, 'ai-message');
                         }
                     } catch (error) {
@@ -233,13 +233,13 @@
                     const response = await fetch('https://api.muvecom.com.br/v1/spam');
                     const responseData = await parseResponse(response);
                     
-                    if (!response.ok || !responseData.content || shouldIgnoreMessage(responseData.content)) {
+                    if (!response.ok || !responseData.output || shouldIgnoreMessage(responseData.output)) {
                         return;
                     }
                     
-                    if (!messageHistory.has(responseData.content)) {
-                        messageHistory.add(responseData.content);
-                        const formattedMessage = formatMessage(responseData.content);
+                    if (!messageHistory.has(responseData.output)) {
+                        messageHistory.add(responseData.output);
+                        const formattedMessage = formatMessage(responseData.output);
                         addMessage('IA', formattedMessage, 'ai-message');
                     }
                 } catch (error) {
