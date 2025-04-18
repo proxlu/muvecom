@@ -173,6 +173,8 @@
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
         let pdfRequested = false;
+        let lastGetRequestTime = 0;
+        const GET_REQUEST_INTERVAL = 1000; // 1 segundo entre requisições
 
         // Funções auxiliares
         function formatMessage(message) {
@@ -263,59 +265,102 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Função para verificar e baixar o PDF com segurança
+        async function safelyDownloadPdf() {
+            const now = Date.now();
+            const timeSinceLastRequest = now - lastGetRequestTime;
+            
+            // Aguarda o intervalo mínimo entre requisições
+            if (timeSinceLastRequest < GET_REQUEST_INTERVAL) {
+                await new Promise(resolve => setTimeout(resolve, GET_REQUEST_INTERVAL - timeSinceLastRequest));
+            }
+            
+            try {
+                lastGetRequestTime = Date.now();
+                const pdfResponse = await fetch(`https://api.muvecom.com.br/v1/spam`, {
+                    headers: {
+                        'X-Session-ID': sessionId,
+                        'Accept': 'application/pdf'
+                    }
+                });
+    
+                // Verifica se o sessionId do header corresponde
+                const responseSessionId = pdfResponse.headers.get('X-Session-ID');
+                if (responseSessionId !== sessionId) {
+                    throw new Error('Sessão inválida');
+                }
+    
+                if (!pdfResponse.ok) {
+                    throw new Error('Falha ao receber PDF');
+                }
+    
+                const blob = await pdfResponse.blob();
+                const pdfUrl = URL.createObjectURL(blob);
+                
+                return pdfUrl;
+            } catch (error) {
+                console.error('Erro no download do PDF:', error);
+                throw error;
+            }
+        }
+    
         // Função principal para enviar mensagem
         async function sendMessage() {
             const message = messageInput.value.trim();
             if (!message || sendButton.disabled) return;
-
+    
             addMessage('Você', message, 'user-message');
             messageInput.value = '';
             sendButton.disabled = true;
             sendButton.innerHTML = '<div class="loading"></div>';
-
+    
             try {
                 // 1. Envia mensagem para o endpoint /resp
                 const response = await fetch('https://api.muvecom.com.br/v1/resp', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    },
                     body: JSON.stringify({
                         sessionId: sessionId,
                         chatInput: message
                     })
                 });
-
+    
                 const responseText = await response.text();
-
+    
                 if (!response.ok) {
                     throw new Error(responseText || 'Erro no servidor');
                 }
-
+    
                 // 2. Processa resposta da IA
                 const displayText = responseText.replace(/5BHor92uAR/g, '');
                 addMessage('IA', displayText, 'ai-message');
-
-                // 3. Se tiver marcador, faz GET para /spam
+    
+                // 3. Se tiver marcador, faz GET para /spam com verificações
                 if (responseText.includes('5BHor92uAR') && !pdfRequested) {
                     pdfRequested = true;
                     try {
-                        const pdfResponse = await fetch(`https://api.muvecom.com.br/v1/spam?sessionId=${sessionId}`);
-                        
-                        if (!pdfResponse.ok) throw new Error('Falha ao receber PDF');
-                        
-                        const blob = await pdfResponse.blob();
-                        const pdfUrl = URL.createObjectURL(blob);
+                        const pdfUrl = await safelyDownloadPdf();
                         
                         // 4. Adiciona mensagem com o PDF
                         addMessage('IA', 
-                            `<a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo</a>`, 
+                            `<div class="media-container">
+                                <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo</a>
+                            </div>`, 
                             'ai-message', true);
                             
                     } catch (error) {
-                        addMessage('Sistema', 'Erro ao receber catálogo', 'error-message');
+                        let errorMessage = 'Erro ao receber catálogo';
+                        if (error.message === 'Sessão inválida') {
+                            errorMessage = 'Não autorizado - sessão inválida';
+                        }
+                        addMessage('Sistema', errorMessage, 'error-message');
                         pdfRequested = false;
                     }
                 }
-
+    
             } catch (error) {
                 addMessage('Sistema', `Erro: ${error.message}`, 'error-message');
             } finally {
@@ -323,7 +368,6 @@
                 sendButton.textContent = 'Enviar';
             }
         }
-
         // Event Listeners
         messageInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
