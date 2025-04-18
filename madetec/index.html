@@ -173,49 +173,43 @@
             return message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
         }
 
-        // Função para detectar e formatar mídia
+        // Função para detectar e formatar mídia (versão simplificada)
         function detectAndFormatMedia(content) {
-            // Expressões regulares para detectar URLs de imagens e vídeos
+            // Expressões regulares para detectar URLs de mídia
             const imageRegex = /(https?:\/\/.*\.(?:png|jpg|jpeg|gif|webp|bmp)(?:\?\S*)?)/gi;
             const videoRegex = /(https?:\/\/.*\.(?:mp4|webm|ogg)(?:\?\S*)?)/gi;
             const youtubeRegex = /(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/(watch\?v=)?([a-zA-Z0-9_-]{11})/gi;
             const driveRegex = /(https?:\/\/)?(www\.)?(drive\.google\.com)\/(file\/d\/|open\?id=)([a-zA-Z0-9_-]+)/gi;
 
-            // Processa imagens
+            // Processa imagens (mostra apenas a imagem)
             content = content.replace(imageRegex, (match) => {
                 return `<div class="media-container">
                     <img src="${match}" alt="Imagem" onerror="this.style.display='none'">
-                    <a href="${match}" target="_blank" class="media-link">Abrir imagem</a>
                 </div>`;
             });
 
-            // Processa vídeos
+            // Processa vídeos (mostra apenas o player)
             content = content.replace(videoRegex, (match) => {
                 return `<div class="media-container">
                     <video controls>
                         <source src="${match}" type="video/mp4">
-                        Seu navegador não suporta vídeos HTML5.
                     </video>
-                    <a href="${match}" target="_blank" class="media-link">Abrir vídeo</a>
                 </div>`;
             });
 
-            // Processa YouTube
+            // Processa YouTube (mostra apenas o embed)
             content = content.replace(youtubeRegex, (match, p1, p2, p3, p4, videoId) => {
                 return `<div class="media-container">
                     <iframe width="560" height="315" src="https://www.youtube.com/embed/${videoId}" 
-                        frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowfullscreen></iframe>
-                    <a href="${match}" target="_blank" class="media-link">Abrir no YouTube</a>
+                        frameborder="0" allowfullscreen></iframe>
                 </div>`;
             });
 
-            // Processa Google Drive (visualização)
+            // Processa Google Drive (mostra apenas o preview)
             content = content.replace(driveRegex, (match, p1, p2, p3, p4, fileId) => {
                 return `<div class="media-container">
                     <iframe src="https://drive.google.com/file/d/${fileId}/preview" 
                         width="100%" height="300" frameborder="0"></iframe>
-                    <a href="${match}" target="_blank" class="media-link">Abrir no Google Drive</a>
                 </div>`;
             });
 
