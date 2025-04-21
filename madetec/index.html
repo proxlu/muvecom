@@ -273,7 +273,7 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     
-        // Função independente para verificar e baixar o PDF (versão corrigida)
+        // Função independente para verificar e baixar o PDF (versão simplificada para receber URL)
         async function checkForPdf() {
             if (isCheckingPdf) return;
             isCheckingPdf = true;
@@ -298,23 +298,16 @@
                     return;
                 }
         
-                const blob = await response.blob();
-                console.log("Blob recebido. Tamanho:", blob.size, "Tipo:", blob.type);
-        
-                // Verifica se é PDF (pelos primeiros bytes)
-                const buffer = await blob.slice(0, 4).arrayBuffer();
-                const view = new Uint8Array(buffer);
-                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
-        
-                if (isPdf && blob.size > 0) {
-                    const pdfUrl = URL.createObjectURL(blob);
+                const pdfUrl = await response.text(); // Recebe o URL como texto simples
+                
+                if (pdfUrl && pdfUrl.startsWith('http')) {
                     addMessage('IA', `
                         <div class="media-container">
-                            <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
+                            <a href="${pdfUrl}" target="_blank">📄 Baixar PDF</a>
                         </div>
                     `, 'ai-message', true);
                 } else {
-                    console.log("Resposta não é um PDF válido");
+                    console.log("Resposta não contém um URL válido");
                 }
             } catch (error) {
                 console.error("Erro na requisição:", error);
