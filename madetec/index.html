@@ -276,17 +276,13 @@
         // Função independente para verificar e baixar o PDF (versão corrigida)
         async function checkForPdf() {
             if (isCheckingPdf) return;
-            
             isCheckingPdf = true;
-            
+        
             try {
                 console.log('Enviando requisição GET para /spam...');
-                
                 const response = await fetch(`https://api.muvecom.com.br/v1/spam`, {
                     method: 'GET',
-                    headers: {
-                        'X-Session-ID': sessionId // (opcional, pode remover se não for usado no backend)
-                    }
+                    headers: { 'X-Session-ID': sessionId }
                 });
         
                 console.log('Resposta recebida:', response);
@@ -295,33 +291,41 @@
                     throw new Error(`Erro HTTP: ${response.status}`);
                 }
         
-                // Verifica se a resposta é um PDF (pelo Content-Type)
-                const contentType = response.headers.get('Content-Type');
-                const isPdf = contentType && contentType.includes('application/pdf');
+                // 1. Tenta processar como PDF primeiro
+                const contentType = response.headers.get('Content-Type') || '';
+                const isLikelyPdf = contentType.includes('application/pdf') || 
+                                   contentType.includes('octet-stream') || 
+                                   !contentType; // Assume PDF se não houver Content-Type
         
-                if (isPdf) {
+                if (isLikelyPdf) {
                     const blob = await response.blob();
-                    const pdfUrl = URL.createObjectURL(blob);
                     
-                    addMessage('IA', 
-                        `<div class="media-container">
-                            <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo (PDF)</a>
-                            <iframe src="${pdfUrl}" width="100%" height="500px" style="border: none;"></iframe>
-                        </div>`, 
-                        'ai-message', true);
-                } else {
-                    // Se não for PDF, tenta interpretar como JSON (caso a API retorne um link)
-                    const data = await response.json();
-                    if (data.pdfUrl) {
-                        addMessage('IA', 
-                            `<div class="media-container">
-                                <a href="${data.pdfUrl}" download="catalogo.pdf">📄 Baixar Catálogo (Link Externo)</a>
-                            </div>`, 
-                            'ai-message', true);
-                    } else {
-                        console.log('A resposta não contém um PDF ou URL de PDF:', data);
+                    // Verifica se o blob parece ser um PDF (pelos primeiros bytes)
+                    const buffer = await blob.slice(0, 4).arrayBuffer();
+                    const view = new Uint8Array(buffer);
+                    const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
+        
+                    if (isPdf) {
+                        const pdfUrl = URL.createObjectURL(blob);
+                        addMessage('IA', `
+                            <div class="media-container">
+                                <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
+                                <iframe src="${pdfUrl}" width="100%" height="500px"></iframe>
+                            </div>
+                        `, 'ai-message', true);
+                        return; // Sai da função após sucesso
                     }
                 }
+        
+                // 2. Se não for PDF, tenta como texto/JSON (apenas para debug)
+                try {
+                    const text = await response.text();
+                    console.log('Resposta como texto:', text);
+                    addMessage('IA', 'A resposta não é um PDF válido.', 'error-message');
+                } catch (textError) {
+                    console.error('Falha ao ler resposta como texto:', textError);
+                }
+        
             } catch (error) {
                 console.error('Erro na verificação do PDF:', error);
             } finally {
