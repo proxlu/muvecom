@@ -279,40 +279,28 @@
             isCheckingPdf = true;
         
             try {
-                console.log('Enviando requisição GET para /spam...');
                 const response = await fetch(`https://api.muvecom.com.br/v1/spam`, {
                     method: 'GET',
                     headers: { 'X-Session-ID': sessionId }
                 });
         
-                // Verificação rápida de erro HTTP
-                if (!response.ok) {
-                    console.error('Erro HTTP:', response.status);
-                    return; // Sai silenciosamente
-                }
+                if (!response.ok) return; // Silêncio
         
-                // Processa como BLOB (sem tentar JSON)
                 const blob = await response.blob();
-                
-                // Verificação MAGIC NUMBER do PDF (4 primeiros bytes = "%PDF")
                 const buffer = await blob.slice(0, 4).arrayBuffer();
                 const view = new Uint8Array(buffer);
-                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
+                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46;
         
-                if (isPdf) {
+                if (isPdf && blob.size > 0) {
                     const pdfUrl = URL.createObjectURL(blob);
                     addMessage('IA', `
                         <div class="media-container">
                             <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
-                            <iframe src="${pdfUrl}" width="100%" height="500px"></iframe>
                         </div>
                     `, 'ai-message', true);
-                } else {
-                    console.log('Resposta não é um PDF válido (magic number incorreto)');
                 }
-        
             } catch (error) {
-                console.error('Erro na verificação do PDF:', error); // Apenas no console
+                console.error('Erro na verificação do PDF:', error);
             } finally {
                 isCheckingPdf = false;
                 setTimeout(checkForPdf, PDF_CHECK_INTERVAL);
