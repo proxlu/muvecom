@@ -278,18 +278,33 @@
             if (isCheckingPdf) return;
             isCheckingPdf = true;
         
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
             try {
+                console.log("Iniciando requisição...");
                 const response = await fetch(`https://api.muvecom.com.br/v1/spam`, {
                     method: 'GET',
-                    headers: { 'X-Session-ID': sessionId }
+                    headers: { 'X-Session-ID': sessionId },
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
         
-                if (!response.ok) return; // Silêncio
+                console.log("Status:", response.status);
+                console.log("Headers:", [...response.headers.entries()]);
+        
+                if (!response.ok) {
+                    console.error("Erro HTTP:", response.status);
+                    return;
+                }
         
                 const blob = await response.blob();
+                console.log("Blob recebido. Tamanho:", blob.size, "Tipo:", blob.type);
+        
+                // Verifica se é PDF (pelos primeiros bytes)
                 const buffer = await blob.slice(0, 4).arrayBuffer();
                 const view = new Uint8Array(buffer);
-                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46;
+                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
         
                 if (isPdf && blob.size > 0) {
                     const pdfUrl = URL.createObjectURL(blob);
@@ -298,9 +313,11 @@
                             <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
                         </div>
                     `, 'ai-message', true);
+                } else {
+                    console.log("Resposta não é um PDF válido");
                 }
             } catch (error) {
-                console.error('Erro na verificação do PDF:', error);
+                console.error("Erro na requisição:", error);
             } finally {
                 isCheckingPdf = false;
                 setTimeout(checkForPdf, PDF_CHECK_INTERVAL);
