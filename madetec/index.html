@@ -285,49 +285,34 @@
                     headers: { 'X-Session-ID': sessionId }
                 });
         
-                console.log('Resposta recebida:', response);
-                
+                // Verificação rápida de erro HTTP
                 if (!response.ok) {
-                    throw new Error(`Erro HTTP: ${response.status}`);
+                    console.error('Erro HTTP:', response.status);
+                    return; // Sai silenciosamente
                 }
         
-                // 1. Tenta processar como PDF primeiro
-                const contentType = response.headers.get('Content-Type') || '';
-                const isLikelyPdf = contentType.includes('application/pdf') || 
-                                   contentType.includes('octet-stream') || 
-                                   !contentType; // Assume PDF se não houver Content-Type
+                // Processa como BLOB (sem tentar JSON)
+                const blob = await response.blob();
+                
+                // Verificação MAGIC NUMBER do PDF (4 primeiros bytes = "%PDF")
+                const buffer = await blob.slice(0, 4).arrayBuffer();
+                const view = new Uint8Array(buffer);
+                const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
         
-                if (isLikelyPdf) {
-                    const blob = await response.blob();
-                    
-                    // Verifica se o blob parece ser um PDF (pelos primeiros bytes)
-                    const buffer = await blob.slice(0, 4).arrayBuffer();
-                    const view = new Uint8Array(buffer);
-                    const isPdf = view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46; // "%PDF"
-        
-                    if (isPdf) {
-                        const pdfUrl = URL.createObjectURL(blob);
-                        addMessage('IA', `
-                            <div class="media-container">
-                                <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
-                                <iframe src="${pdfUrl}" width="100%" height="500px"></iframe>
-                            </div>
-                        `, 'ai-message', true);
-                        return; // Sai da função após sucesso
-                    }
-                }
-        
-                // 2. Se não for PDF, tenta como texto/JSON (apenas para debug)
-                try {
-                    const text = await response.text();
-                    console.log('Resposta como texto:', text);
-                    addMessage('IA', 'A resposta não é um PDF válido.', 'error-message');
-                } catch (textError) {
-                    console.error('Falha ao ler resposta como texto:', textError);
+                if (isPdf) {
+                    const pdfUrl = URL.createObjectURL(blob);
+                    addMessage('IA', `
+                        <div class="media-container">
+                            <a href="${pdfUrl}" download="catalogo.pdf">📄 Baixar PDF</a>
+                            <iframe src="${pdfUrl}" width="100%" height="500px"></iframe>
+                        </div>
+                    `, 'ai-message', true);
+                } else {
+                    console.log('Resposta não é um PDF válido (magic number incorreto)');
                 }
         
             } catch (error) {
-                console.error('Erro na verificação do PDF:', error);
+                console.error('Erro na verificação do PDF:', error); // Apenas no console
             } finally {
                 isCheckingPdf = false;
                 setTimeout(checkForPdf, PDF_CHECK_INTERVAL);
