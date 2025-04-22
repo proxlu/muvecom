@@ -183,15 +183,27 @@
 
         // Função para detectar e formatar mídia (com ajuste para ignorar PDF)
         function detectAndFormatMedia(content) {
-            // Primeiro, verifica se é um link de PDF específico (para não aplicar formatação de mídia)
+            // 1. Ignora se for link de PDF (mantém sua lógica atual)
             const pdfLinkRegex = /<div class="media-container">\s*<a href="([^"]+)"[^>]*>📄 Baixar PDF<\/a>\s*<\/div>/;
             const pdfMatch = content.match(pdfLinkRegex);
-            if (pdfMatch) return content; // Se for o link de PDF, retorna sem processar
-            
-            // Padrão para links Markdown: [texto](url) ou [url](url)
+            if (pdfMatch) return content;
+        
+            // 2. Novo: Detecta imagens no formato Markdown ![](URL)
+            const markdownImageRegex = /!\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/gi;
+            content = content.replace(markdownImageRegex, (match, altText, url) => {
+                // Corrige URL do Google Drive (troca '/view' por '/preview')
+                url = url.replace('/view', '/preview');
+                
+                if (url.match(/\.(png|jpg|jpeg|gif|webp|bmp)(\?\S*)?$/i) || url.includes('drive.google.com')) {
+                    return `<div class="media-container">
+                        <img src="${url}" alt="${altText}" onerror="this.style.display='none'">
+                    </div>`;
+                }
+                return match; // Mantém o original se não for imagem suportada
+            });
+        
+            // 3. Processamento original para outros tipos de links (mantido igual)
             const markdownLinkRegex = /\[(.*?)\]\((https?:\/\/[^\s\)]+)\)/gi;
-            
-            // Processa os links Markdown
             content = content.replace(markdownLinkRegex, (match, text, url) => {
                 const isTextAlsoUrl = text.match(/^https?:\/\/[^\s\)]+$/);
                 
@@ -201,11 +213,10 @@
                     url.includes('drive.google.com')) {
                     return '';
                 }
-                
                 return isTextAlsoUrl ? url : `<a href="${url}" target="_blank">${text}</a>`;
             });
         
-            // Processa URLs soltos (exceto se for o link de PDF)
+            // 4. Processamento original para URLs soltos (mantido igual)
             const mediaRegex = /(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|bmp|mp4|webm|ogg)(?:\?\S*)?)|(https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?v=)?([a-zA-Z0-9_-]{11}))|(https?:\/\/(?:www\.)?drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?export=download&id=)([a-zA-Z0-9_-]+))/gi;
             
             content = content.replace(mediaRegex, (match) => {
