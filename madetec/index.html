@@ -371,7 +371,9 @@
                 if (!response.ok) throw new Error("Erro na requisição");
         
                 const responseText = await response.text();
-        
+
+                if (!responseText) return; // Ignora respostas vazias
+                
                 // Verifica se é URL (PDF) ou texto simples
                 if (responseText.startsWith('http')) {
                     // Comportamento atual para PDF
