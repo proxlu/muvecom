@@ -398,6 +398,29 @@
             }
         }
         
+        // Função para verificar se o texto é uma URL
+        function isUrl(text) {
+            try {
+                new URL(text);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Função para processar parâmetros da URL
+        function processUrlParameters() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const textParam = urlParams.get('text');
+            
+            if (textParam) {
+                // Se não for uma URL, adiciona como mensagem da IA
+                if (!isUrl(textParam)) {
+                    addMessage('IA', textParam, 'ai-message');
+                }
+            }
+        }
+        
         // Função principal para enviar mensagem (simplificada)
         async function sendMessage() {
             const message = messageInput.value.trim();
@@ -435,6 +458,9 @@
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
+            // Processa parâmetros da URL
+            processUrlParameters();
+            
             // Inicia a verificação periódica do PDF
             checkForPdf();
             
