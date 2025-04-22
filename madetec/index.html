@@ -356,68 +356,42 @@
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
-    
+        
         // Função para verificar e mostrar o link do PDF
         async function checkForPdf() {
             if (isCheckingPdf) return;
             isCheckingPdf = true;
         
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 100000);
-        
             try {
                 const response = await fetch(`https://api.muvecom.com.br/v1/spam`, {
                     method: 'GET',
-                    headers: { 'X-Session-ID': sessionId },
-                    signal: controller.signal
+                    headers: { 'X-Session-ID': sessionId }
                 });
-                clearTimeout(timeoutId);
         
-                if (!response.ok) {
-                    console.error("Erro HTTP:", response.status);
-                    return;
-                }
+                if (!response.ok) throw new Error("Erro na requisição");
         
-                const pdfUrl = await response.text();
-                
-                if (pdfUrl && pdfUrl.startsWith('http')) {
-                    // Cria um botão de download simples que não será afetado pela formatação de mídia
+                const responseText = await response.text();
+        
+                // Verifica se é URL (PDF) ou texto simples
+                if (responseText.startsWith('http')) {
+                    // Comportamento atual para PDF
                     addMessage('IA', `
                         <div class="pdf-download-container" style="margin: 10px 0;">
-                            <a href="${pdfUrl}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">
+                            <a href="${responseText}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">
                                 📄 Baixar PDF
                             </a>
                         </div>
                     `, 'ai-message', true);
+                } else {
+                    // Se NÃO for URL, trata como mensagem da IA
+                    addMessage('IA', responseText, 'ai-message');
                 }
+        
             } catch (error) {
-                console.error("Erro na requisição:", error);
+                console.error("Erro:", error);
             } finally {
                 isCheckingPdf = false;
                 setTimeout(checkForPdf, PDF_CHECK_INTERVAL);
-            }
-        }
-        
-        // Função para verificar se o texto é uma URL
-        function isUrl(text) {
-            try {
-                new URL(text);
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        // Função para processar parâmetros da URL
-        function processUrlParameters() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const textParam = urlParams.get('text');
-            
-            if (textParam) {
-                // Se não for uma URL, adiciona como mensagem da IA
-                if (!isUrl(textParam)) {
-                    addMessage('IA', textParam, 'ai-message');
-                }
             }
         }
         
@@ -458,9 +432,7 @@
         
         // Inicialização
         document.addEventListener('DOMContentLoaded', () => {
-            // Processa parâmetros da URL
             processUrlParameters();
-            
             // Inicia a verificação periódica do PDF
             checkForPdf();
             
