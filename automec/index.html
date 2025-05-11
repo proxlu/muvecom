@@ -107,7 +107,7 @@
                 // const urlUsados = 'https://cws.gm.com/vs-cws/vehshop/v2/vehicles?&conditions=Used,CPO&bacs=198595,220953,235142,249194,265316,273384,314142,330358,256738,314143&locale=pt_BR&pageSize=250&sortby=netPrice:asc&includeNearMatches=false&requesterType=TIER_3&dealershipView=true&mileages=0&mileages=200000&conditions=Used&conditions=CPO';
 
                 // const [responseNovos, responseUsados] = await Promise.all([
-                const responseNovos = await Promise.all([
+                const [responseNovos] = await Promise.all([
                     fetch(urlNovos),
                     // fetch(urlUsados)
                 ]);
