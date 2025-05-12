@@ -371,22 +371,28 @@
                 if (!response.ok) throw new Error("Erro na requisição");
         
                 const responseText = await response.text();
-
+        
                 if (!responseText) return; // Ignora respostas vazias
                 
-                // Verifica se é URL (PDF) ou texto simples
-                if (responseText.startsWith('http')) {
-                    // Comportamento atual para PDF
-                    addMessage('IA', `
-                        <div class="pdf-download-container" style="margin: 10px 0;">
-                            <a href="${responseText}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">
-                                📄 Baixar PDF
-                            </a>
-                        </div>
-                    `, 'ai-message', true);
-                } else {
-                    // Se NÃO for URL, trata como mensagem da IA
-                    addMessage('IA', responseText, 'ai-message');
+                // Verifica se há múltiplas URLs (separadas por quebras de linha)
+                const urls = responseText.split('\n').filter(url => url.trim() !== '');
+                
+                if (urls.length > 0) {
+                    // Processa cada URL encontrada
+                    urls.forEach(url => {
+                        if (url.startsWith('http')) {
+                            addMessage('IA', `
+                                <div class="pdf-download-container" style="margin: 10px 0;">
+                                    <a href="${url.trim()}" target="_blank" style="display: inline-block; padding: 8px 16px; background-color: #1a73e8; color: white; text-decoration: none; border-radius: 4px;">
+                                        📄 Baixar PDF (${urls.indexOf(url) + 1}/${urls.length})
+                                    </a>
+                                </div>
+                            `, 'ai-message', true);
+                        } else {
+                            // Se não for URL, trata como mensagem da IA
+                            addMessage('IA', url, 'ai-message');
+                        }
+                    });
                 }
         
             } catch (error) {
