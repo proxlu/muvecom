@@ -273,12 +273,6 @@
             const mensagemUsuario = input.value.trim();
             if (!mensagemUsuario) return;
 
-            // Se os dados ainda não carregaram, avisa o usuário
-            if (!isDataLoaded) {
-                addAIMessage("Ainda estou carregando os dados dos veículos. Por favor, aguarde mais um momento...");
-                return;
-            }
-
             historico.push({ role: "user", parts: [{ text: mensagemUsuario }] });
             sessionStorage.setItem("geminiChat", JSON.stringify(historico));
             exibirChat();
