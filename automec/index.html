@@ -194,7 +194,7 @@
                 messageDiv.className = `message ${msg.role === 'user' ? 'user-message' : 'ai-message'}`;
                 
                 const strong = document.createElement('strong');
-                strong.textContent = msg.role === 'user' ? 'Você: ' : 'IA: ';
+                strong.textContent = msg.role === 'user' ? 'Você: ' : 'Ana: ';
                 
                 const text = document.createElement('span');
                 if (msg.role === 'model') {
